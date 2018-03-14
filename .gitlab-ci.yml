@@ -21,7 +21,7 @@ build_linux:
 deploy_linux:
   stage: deploy
   only:
-    - /^$CI_PROJECT_NAME-.$/
+    - /^tryapi-.$/
   except:
     - tags
   script:
