@@ -21,7 +21,6 @@ build_linux:
 deploy_linux:
   stage: deploy
   only:
-    - tags
     - /^$CI_PROJECT_NAME-.$/
   except:
     - tags
