@@ -1,0 +1,4 @@
+build_linux:
+  script:
+    - echo Hello world
+  
