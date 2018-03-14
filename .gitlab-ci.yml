@@ -72,7 +72,7 @@ release_gh_submit:
   stage: release_submit
   <<: *release_tag_filter
   when: manual
-  allow_failure: true
+  allow_failure: false
   script:
     - echo Transform draft to release, confirm release
 
