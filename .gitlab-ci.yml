@@ -22,6 +22,9 @@ deploy_linux:
   stage: deploy
   only:
     - tags
+    - /^$CI_PROJECT_NAME-.$/
+  except:
+    - tags
   script:
     - test $CI_COMMIT_TAG && echo "Has tag $CI_COMMIT_TAG" || echo "No tag"
     - test $CI_COMMIT_REF_NAME && echo "Has name $CI_COMMIT_REF_NAME" || echo "No ref name"
