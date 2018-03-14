@@ -1,4 +1,4 @@
-image: alpine/git
+image: mrnonz/alpine-git-curl
 
 stages:
   - build
