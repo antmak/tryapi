@@ -1,4 +1,25 @@
+stages:
+  - build
+  - deploy
+
 build_linux:
+  stage: build
   script:
     - echo Hello world
-  
+
+deploy_linux:
+  stage: deploy
+  only:
+    - tags
+  script:
+    - test $CI_COMMIT_TAG && echo "Has tag $CI_COMMIT_TAG" || echo "No tag"
+    - test $CI_COMMIT_REF_NAME && echo "Has name $CI_COMMIT_REF_NAME" || echo "No ref name"
+    - test $CI_COMMIT_REF_SLUG && echo "Has slug $CI_COMMIT_REF_SLUG" || echo "No slug name"
+    - test $CI_PROJECT_NAME && echo "Has proj name $CI_PROJECT_NAME" || echo "No proj name"
+    - test $CI_PROJECT_PATH && echo "Has proj path $CI_PROJECT_PATH" || echo "No proj path"
+    - test $CI_PROJECT_PATH_SLUG && echo "Has slug path $CI_PROJECT_PATH_SLUG" || echo "No slug path"
+    - git describe || true
+    - git describe --tags || true
+    - git describe --always || true
+    - echo 10
+
