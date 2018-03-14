@@ -2,7 +2,14 @@ image: mrnonz/alpine-git-curl
 
 stages:
   - build
-  - deploy
+  - test
+  - release_stage0
+  - release_stage1
+  - release_submit
+
+.release_tag_filter: &release_tag_filter
+  only:
+    - /^tryapi-.*$/
 
 build_linux:
   stage: build
@@ -18,11 +25,26 @@ build_linux:
     - git describe --always || true
     - echo Hello world
 
-deploy_linux:
-  stage: deploy
-  only:
-    - /^$CI_PROJECT_NAME-.*$/
+build_windows:
+  stage: build
   script:
+    - echo build win
+
+test_linux:
+  stage: test
+  script:
+    - echo test lin
+
+test_win:
+  stage: test
+  script:
+    - echo test win
+
+release_gh_draft:
+  stage: release_stage0
+  <<: *release_tag_filter
+  script:
+    - echo Create draft of release, write description
     - test $CI_COMMIT_TAG && echo "Has tag $CI_COMMIT_TAG" || echo "No tag"
     - test $CI_COMMIT_REF_NAME && echo "Has name $CI_COMMIT_REF_NAME" || echo "No ref name"
     - test $CI_COMMIT_REF_SLUG && echo "Has slug $CI_COMMIT_REF_SLUG" || echo "No slug name"
@@ -32,5 +54,25 @@ deploy_linux:
     - git describe || true
     - git describe --tags || true
     - git describe --always || true
-    - echo 10
+    - echo pewpew
+
+release_gh_upload_linux:
+  stage: release_stage1
+  <<: *release_tag_filter
+  script:
+    - echo Upload linux dist
+
+release_gh_upload_win:
+  stage: release_stage1
+  <<: *release_tag_filter
+  script:
+    - echo Upload win dist
+
+release_gh_submit:
+  stage: release_submit
+  <<: *release_tag_filter
+  when: manual
+  allow_failure: true
+  script:
+    - echo Transform draft to release, confirm release
 
