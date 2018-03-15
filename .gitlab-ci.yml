@@ -48,10 +48,11 @@ variables:
   echo "ARCHIVE_NAME: $ARCHIVE_NAME"
 
 .gh_getting_tool: &gh_getting_tool |
-  apk update
-  apk add ca-certificates wget
-  wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
-  chmod +x ./$GH_TOOL_NAME
+  cp ./bin/${GH_TOOL_NAME} ./
+#  apk update
+#  apk add ca-certificates wget
+#  wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
+#  chmod +x ./$GH_TOOL_NAME
 
 .add_gh_key: &add_gh_key |
   which ssh-agent || ( apt-get update -y -q && apt-get install -y -q --no-install-recommends openssh-client )
