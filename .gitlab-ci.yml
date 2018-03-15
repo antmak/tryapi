@@ -17,8 +17,9 @@ variables:
   UNARCHIVE_TOOL: "tar xvf"
   ARCHIVE_EXT: "tar.gz"
 #  ARCHIVE_NAME: "${DIST_PREFIX}-unknown.${ARCHIVE_EXT}"
-  GH_SCRIPT_URL: https://ci.espressif.cn:42348/cache
-  GH_SCRIPT: github-release
+  GH_TOOL_URL: https://ci.espressif.cn:42348/cache
+  GH_TOOL_NAME: github-release
+  GH_TOOL: "./${DIST_ART_DIR}/${GH_TOOL_NAME}"
   GITHUB_USER: antmak
   GITHUB_REPO: "${CI_PROJECT_NAME}"
   
@@ -49,8 +50,8 @@ variables:
 .gh_getting_tool: &gh_getting_tool |
   apk update
   apk add ca-certificates wget
-  wget --no-verbose $GH_SCRIPT_URL/$GH_SCRIPT
-  chmod +x ./$GH_SCRIPT
+  wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
+  chmod +x ./$GH_TOOL_NAME
 
 .add_gh_key: &add_gh_key |
   which ssh-agent || ( apt-get update -y -q && apt-get install -y -q --no-install-recommends openssh-client )
@@ -62,6 +63,17 @@ variables:
 before_script:
   - set -o errexit; set -o pipefail; set -o nounset
   - set -x
+
+get_gh_tools:
+  stage: build
+  <<: *release_tag_filter
+  artifacts:
+    paths:
+      - ${DIST_ART_DIR}
+  script:
+    - *gh_getting_tool
+    - mkdir -p ${DIST_ART_DIR}
+    - mv ${GH_TOOL_NAME} ${DIST_ART_DIR}/
 
 build_linux:
   stage: build
@@ -77,7 +89,7 @@ build_linux:
     - echo -----------------------------------------------------
     - *get_release_name
     # dummy install
-    - mkdir -p $DIST_INSTALLED_DIR
+    - mkdir -p ${DIST_INSTALLED_DIR}
     - echo "compiled binaries" > $DIST_INSTALLED_DIR/some_files.bin
     - *dist_archive
 
@@ -91,7 +103,7 @@ build_windows:
   script:
     - *get_release_name
     # dummy install
-    - mkdir -p $DIST_INSTALLED_DIR
+    - mkdir -p ${DIST_INSTALLED_DIR}
     - echo "compiled binaries" > $DIST_INSTALLED_DIR/some_files.bin
     - *dist_archive
 
@@ -119,14 +131,13 @@ release_gh_draft:
   stage: release_stage0
   <<: *release_tag_filter
   script:
-    - *gh_getting_tool
     - *add_gh_key
     # update GH
     - git remote add github git@github.com:antmak/tryapi.git
     - git push github HEAD:master
     - git push github ${CI_COMMIT_TAG}
     # release draft
-    - ./${GH_SCRIPT} release --tag ${CI_COMMIT_TAG} --draft
+    - ${GH_TOOL} release --tag ${CI_COMMIT_TAG} --draft
 
 release_gh_upload_linux:
   stage: release_stage1
@@ -134,9 +145,8 @@ release_gh_upload_linux:
   variables:
     PLATFORM_NAME: "linux64"
   script:
-    - *gh_getting_tool
     - ARCHIVE_NAME=$(cat ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME})
-    - ./${GH_SCRIPT} upload --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
+    - ${GH_TOOL} upload --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
 
 release_gh_upload_win:
   stage: release_stage1
@@ -144,15 +154,13 @@ release_gh_upload_win:
   variables:
     PLATFORM_NAME: "win32"
   script:
-    - *gh_getting_tool
     - ARCHIVE_NAME=$(cat ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME})
-    - ./${GH_SCRIPT} upload --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
+    - ${GH_TOOL} upload --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
 
 release_gh_submit:
   stage: release_submit
   <<: *release_tag_filter
   <<: *release_submit_action
   script:
-    - *gh_getting_tool
-    - ./${GH_SCRIPT} edit --tag ${CI_COMMIT_TAG} --description "Some description 123"
+    - ${GH_TOOL} edit --tag ${CI_COMMIT_TAG} --description "Some description 123"
 
