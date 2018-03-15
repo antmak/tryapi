@@ -141,11 +141,10 @@ release_gh_draft:
     - *add_gh_key
     # update GH
     - git remote add github git@github.com:antmak/tryapi.git
-    - git push github HEAD:master
     - git push github ${CI_COMMIT_TAG}
     # release draft
     - *gh_print_debug
-    - ${GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --draft --description ${RELEASE_DESC}
+    - ${GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --draft --description "${RELEASE_DESC}"
 
 release_gh_upload_linux:
   stage: release_stage1
@@ -173,5 +172,5 @@ release_gh_submit:
   <<: *release_submit_action
   script:
     - *gh_print_debug
-    - ${GH_TOOL} edit -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description ${RELEASE_DESC}
+    - ${GH_TOOL} edit -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description "${RELEASE_DESC}"
 
