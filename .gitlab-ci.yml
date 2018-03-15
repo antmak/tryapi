@@ -20,7 +20,6 @@ variables:
   GH_SCRIPT_URL: https://ci.espressif.cn:42348/cache
   GH_SCRIPT: github-release
   GITHUB_USER: antmak
-  GITHUB_TOKEN: 483417c3a10c64521f569eee0cb29b58b14fd977
   GITHUB_REPO: "${CI_PROJECT_NAME}"
   
 
