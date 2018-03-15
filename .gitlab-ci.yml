@@ -48,6 +48,8 @@ variables:
   echo "ARCHIVE_NAME: $ARCHIVE_NAME"
 
 .gh_getting_tool: &gh_getting_tool |
+  apk update
+  apk add ca-certificates wget
   wget --no-verbose $GH_SCRIPT_URL/$GH_SCRIPT
   chmod +x ./$GH_SCRIPT
 
@@ -69,13 +71,6 @@ build_linux:
   variables:
     PLATFORM_NAME: "linux64"
   script:
-    - echo -----------------------------------------------------
-    - test $CI_COMMIT_TAG && echo "Has tag $CI_COMMIT_TAG" || echo "No tag"
-    - test $CI_COMMIT_REF_NAME && echo "Has name $CI_COMMIT_REF_NAME" || echo "No ref name"
-    - test $CI_COMMIT_REF_SLUG && echo "Has slug $CI_COMMIT_REF_SLUG" || echo "No slug name"
-    - test $CI_PROJECT_NAME && echo "Has proj name $CI_PROJECT_NAME" || echo "No proj name"
-    - test $CI_PROJECT_PATH && echo "Has proj path $CI_PROJECT_PATH" || echo "No proj path"
-    - test $CI_PROJECT_PATH_SLUG && echo "Has slug path $CI_PROJECT_PATH_SLUG" || echo "No slug path"
     - git describe || true
     - git describe --tags || true
     - git describe --always || true
@@ -128,6 +123,7 @@ release_gh_draft:
     - *add_gh_key
     # update GH
     - git remote add github git@github.com:antmak/tryapi.git
+    - git push github HEAD:master
     - git push github ${CI_COMMIT_TAG}
     # release draft
     - ./${GH_SCRIPT} release --tag ${CI_COMMIT_TAG} --description "Some description" --draft
