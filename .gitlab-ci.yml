@@ -56,7 +56,7 @@ variables:
   eval $(ssh-agent -s)
   printf '%s\n' "${GH_KEY}" | tr -d '\r' | ssh-add - > /dev/null
   mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
+  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
   git remote remove github || true
   git remote add github git@github.com:antmak/tryapi.git
 
