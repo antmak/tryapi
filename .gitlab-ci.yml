@@ -58,7 +58,7 @@ variables:
   mkdir -p ~/.ssh && chmod 700 ~/.ssh
   [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
   git remote remove github || true
-  git remote add github git@github.com:user/repo.git
+  git remote add github git@github.com:antmak/tryapi.git
 
 .get_release_name: &get_release_name |
   REL_DESC=$(git describe --tags)
