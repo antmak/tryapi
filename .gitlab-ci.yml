@@ -40,11 +40,10 @@ variables:
   echo "${ARCHIVE_NAME}" > ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME}
 
 .gh_getting_tool: &gh_getting_tool |
-  cp ./bin/${GH_TOOL_NAME} ./
-#  apk update
-#  apk add ca-certificates wget
-#  wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
-#  chmod +x ./$GH_TOOL_NAME
+  LOCAL_TOOL_PATH=$(command -v ${GH_TOOL_NAME}) \
+    && cp ${LOCAL_TOOL_PATH} . \
+    || wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
+  chmod +x ./$GH_TOOL_NAME
 
 .gh_print_debug: &gh_print_debug |
   echo $GITHUB_TOKEN
