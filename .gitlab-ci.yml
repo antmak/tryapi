@@ -1,12 +1,52 @@
 stages:
   - build
+  - release_draft
+  - release_submit
+
+image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
+
+before_script:
+  # Use CI Tools
+  #TODO Using _dev now, change it without _dev (see Variables)
+  - curl -sSL ${CIT_LOADER_URL} | sh
+  - source citools/import_functions
 
 build:
   stage: build
+  tags:
+    - build
   variables:
     CI_DEBUG_TRACE: "true"
   script:
     - set -x
     - echo $CI_COMMIT_REF_NAME
     - echo $CI_COMMIT_SHA
-    - echo $CI_COMMIT_TAG
+    #- echo $CI_COMMIT_TAG
+
+gh_release_draft:
+  stage: release_draft
+#  <<: *release_tag_filter
+  when: on_success
+  tags:
+    - build
+  script:
+    #- *add_gh_key_remote
+    # Print any existing information (it can be helpful to look at the description)
+    - echo "An old information about ${CI_COMMIT_TAG}:"
+    - ${GH_TOOL} info -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} -j || echo "No information."
+    # Pushing the tag anyway
+    - git push --force github ${CI_COMMIT_TAG}
+    # Releasing a draft
+    - ${GH_TOOL} delete -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} || true
+    - ${GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description "${RELEASE_DESC}" --draft
+    - GH_REL_TAG=${CI_COMMIT_TAG}
+    # Uploading archives
+    - PLATFORM_NAME="linux64"
+    #- *gh_upload_archive
+    - PLATFORM_NAME="win32"
+    #- *gh_upload_archive
+    - PLATFORM_NAME="macos"
+    #- *gh_upload_archive
+    - ARCHIVE_NAME=$(cat ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME})
+    - echo Release ${GH_REL_TAG}, file ${ARCHIVE_NAME}
+    - ${GH_TOOL} upload -s ${GITHUB_TOKEN} --tag ${GH_REL_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
