@@ -1,177 +1,68 @@
-image: mrnonz/alpine-git-curl
-
 stages:
   - build
-  - test
   - deploy
-  - release_stage0
-  - release_stage1
+  - release_draft
   - release_submit
 
-variables:
-  DIST_ART_DIR: "dist"
-#  DIST_PREFIX: "${CI_PROJECT_NAME}"
-  DIST_EXT: "tar.gz"
-  DIST_INSTALLED_DIR: "${CI_PROJECT_NAME}-root"
-  ARCHIVE_TOOL: "tar czvf"
-  UNARCHIVE_TOOL: "tar xvf"
-  ARCHIVE_EXT: "tar.gz"
-#  ARCHIVE_NAME: "${DIST_PREFIX}-unknown.${ARCHIVE_EXT}"
-  GH_TOOL_URL: https://ci.espressif.cn:42348/cache
-  GH_TOOL_NAME: github-release
-  GH_TOOL: "./${DIST_ART_DIR}/${GH_TOOL_NAME}"
-  GITHUB_USER: antmak
-  GITHUB_REPO: "${CI_PROJECT_NAME}"
-  RELEASE_DESC: "New release, long-awaited fixes"
-  
-
-.release_tag_filter: &release_tag_filter
-  only:
-    - /^tryapi-.*$/
-
-.release_submit_action: &release_submit_action
-  when: manual
-  allow_failure: false
-
-.dist_archive: &dist_archive |
-  ${ARCHIVE_TOOL} ${ARCHIVE_NAME} ${DIST_INSTALLED_DIR}
-  mkdir -p ${DIST_ART_DIR}
-  mv ${ARCHIVE_NAME} ${DIST_ART_DIR}
-  echo "${ARCHIVE_NAME}" > ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME}
-
-.get_release_name: &get_release_name |
-  REL_DESC=$(git describe --tags)
-  REL_NAME=${REL_DESC}-${PLATFORM_NAME}
-  ARCHIVE_NAME=${REL_NAME}.${DIST_EXT}
-  echo "PLATFORM_NAME: $PLATFORM_NAME"
-  echo "REL_DESC: $REL_DESC"
-  echo "REL_NAME: $REL_NAME"
-  echo "ARCHIVE_NAME: $ARCHIVE_NAME"
-
-.gh_getting_tool: &gh_getting_tool |
-  cp ./bin/${GH_TOOL_NAME} ./
-#  apk update
-#  apk add ca-certificates wget
-#  wget --no-verbose $GH_TOOL_URL/$GH_TOOL_NAME
-#  chmod +x ./$GH_TOOL_NAME
-
-.gh_print_debug: &gh_print_debug |
-  echo $GITHUB_TOKEN
-  echo $GITHUB_USER
-  echo $GITHUB_REPO
-
-.add_gh_key: &add_gh_key |
-  which ssh-agent || ( apt-get update -y -q && apt-get install -y -q --no-install-recommends openssh-client )
-  eval $(ssh-agent -s)
-  echo "${GH_KEY}" | base64 -d | ssh-add - > /dev/null
-  mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
+image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 
 before_script:
-  - set -o errexit; set -o pipefail; set -o nounset
-  - set -x
+  # Use CI Tools
+  #TODO Using _dev now, change it without _dev (see Variables)
+  - curl -sSL ${CIT_DEV_LOADER_URL} | sh
+  - source citools/import_functions
 
-get_gh_tools:
-  stage: build
-  <<: *release_tag_filter
-  artifacts:
-    paths:
-      - ${DIST_ART_DIR}
-  script:
-    - *gh_getting_tool
-    - mkdir -p ${DIST_ART_DIR}
-    - mv ${GH_TOOL_NAME} ${DIST_ART_DIR}/
+.add_gh_remote_key: &add_gh_remote_key |
+  cit_add_ssh_key "${GH_SSH_KEY}"
+  git remote remove gh || true
+  git remote add gh ${GH_PUSH_REPO}
 
-build_linux:
+build:
   stage: build
-  artifacts:
-    paths:
-      - ${DIST_ART_DIR}
+  tags:
+    - build
   variables:
-    PLATFORM_NAME: "linux64"
+    #CI_DEBUG_TRACE: "true"
   script:
-    - git describe || true
-    - git describe --tags || true
-    - git describe --always || true
-    - echo -----------------------------------------------------
-    - *get_release_name
-    # dummy install
-    - mkdir -p ${DIST_INSTALLED_DIR}
-    - echo "compiled binaries" > $DIST_INSTALLED_DIR/some_files.bin
-    - *dist_archive
-
-build_windows:
-  stage: build
-  artifacts:
-    paths:
-      - ${DIST_ART_DIR}
-  variables:
-    PLATFORM_NAME: "win32"
-  script:
-    - *get_release_name
-    # dummy install
-    - mkdir -p ${DIST_INSTALLED_DIR}
-    - echo "compiled binaries" > $DIST_INSTALLED_DIR/some_files.bin
-    - *dist_archive
-
-test_linux:
-  stage: test
-  script:
-    - echo test lin
-
-test_win:
-  stage: test
-  script:
-    - echo test win
+    - set -x
+    - echo $CI_COMMIT_REF_NAME
+    - echo $CI_COMMIT_SHA
+    #- echo $CI_COMMIT_TAG
 
 push_master_to_github:
   stage: deploy
   only:
     - master
   when: on_success
+  dependencies: []
   script:
-    - *add_gh_key
-    - git remote add github git@github.com:antmak/tryapi.git
-    - git push github HEAD:master
+    - *add_gh_remote_key
+    - git push gh HEAD:master
 
-release_gh_draft:
-  stage: release_stage0
-  <<: *release_tag_filter
+gh_release_draft:
+  stage: release_draft
+#  <<: *release_tag_filter
+  when: on_success
+  tags:
+    - build
   script:
-    - *add_gh_key
-    # update GH
-    - git remote add github git@github.com:antmak/tryapi.git
-    - git push github ${CI_COMMIT_TAG}
-    #INFO you could use "git push --force github refs/tags/${CI_COMMIT_TAG}:refs/tags/${CI_COMMIT_TAG}"
-    # release draft
-    - *gh_print_debug
-    - ${GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --draft --description "${RELEASE_DESC}"
-
-release_gh_upload_linux:
-  stage: release_stage1
-  <<: *release_tag_filter
-  variables:
-    PLATFORM_NAME: "linux64"
-  script:
+    - *add_gh_remote_key
+    # Print any existing information (it can be helpful to look at the description)
+    - echo "An old information about ${CI_COMMIT_TAG}:"
+    - ${GH_TOOL} info -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} -j || echo "No information."
+    # Pushing the tag anyway
+    - git push --force github ${CI_COMMIT_TAG}
+    # Releasing a draft
+    - ${GH_TOOL} delete -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} || true
+    - ${GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description "${RELEASE_DESC}" --draft
+    - GH_REL_TAG=${CI_COMMIT_TAG}
+    # Uploading archives
+    - PLATFORM_NAME="linux64"
+    #- *gh_upload_archive
+    - PLATFORM_NAME="win32"
+    #- *gh_upload_archive
+    - PLATFORM_NAME="macos"
+    #- *gh_upload_archive
     - ARCHIVE_NAME=$(cat ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME})
-    - *gh_print_debug
-    - ${GH_TOOL} upload -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
-
-release_gh_upload_win:
-  stage: release_stage1
-  <<: *release_tag_filter
-  variables:
-    PLATFORM_NAME: "win32"
-  script:
-    - ARCHIVE_NAME=$(cat ${DIST_ART_DIR}/dist_name_${PLATFORM_NAME})
-    - *gh_print_debug
-    - ${GH_TOOL} upload -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
-
-release_gh_submit:
-  stage: release_submit
-  <<: *release_tag_filter
-  <<: *release_submit_action
-  script:
-    - *gh_print_debug
-    - ${GH_TOOL} edit -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description "${RELEASE_DESC}"
-
+    - echo Release ${GH_REL_TAG}, file ${ARCHIVE_NAME}
+    - ${GH_TOOL} upload -s ${GITHUB_TOKEN} --tag ${GH_REL_TAG} -f ${DIST_ART_DIR}/${ARCHIVE_NAME} -n ${ARCHIVE_NAME}
