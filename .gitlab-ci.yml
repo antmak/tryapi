@@ -21,6 +21,10 @@ before_script:
   only:
     - /^v[0-9].*$/
 
+.release_submit_action: &release_submit_action
+  when: manual
+  allow_failure: true
+
 .build:
   stage: build
   tags:
@@ -61,7 +65,52 @@ gh_release_draft:
 
     # Releasing a draft
     - ${CIT_GH_TOOL} delete --tag ${CI_COMMIT_TAG} || true
-    - ${CIT_GH_TOOL} release --tag ${CI_COMMIT_TAG} -d "Hello release" --draft
+    - ${CIT_GH_TOOL} release --tag ${CI_COMMIT_TAG} --draft
 
     # Upload the archive
     - git_gh_tool_upload_file "data.txt"
+
+Release_tag_submit:
+  stage: release_submit
+  <<: *release_tag_filter
+  <<: *release_submit_action
+  dependencies: []
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - export GITHUB_TOKEN=${GH_TOKEN}
+    - export GITHUB_USER=${GH_USER}
+    - export GITHUB_REPO=${GH_REPO}
+    - cit_gh_tool_init
+    - echo "WARNING! The description will be replaced anyway. You have to fix them on GitHub.com/"
+    - ${CIT_GH_TOOL} edit --tag ${CI_COMMIT_TAG}
+
+Pre-Release_tag_submit:
+  stage: release_submit
+  <<: *release_tag_filter
+  <<: *release_submit_action
+  dependencies: []
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - export GITHUB_TOKEN=${GH_TOKEN}
+    - export GITHUB_USER=${GH_USER}
+    - export GITHUB_REPO=${GH_REPO}
+    - cit_gh_tool_init
+    - echo "WARNING! The description will be replaced anyway. You have to fix them on GitHub.com/"
+    - ${CIT_GH_TOOL} edit --tag ${CI_COMMIT_TAG} --pre-release
+
+Delete_tag_release:
+  stage: release_submit
+  <<: *release_tag_filter
+  <<: *release_submit_action
+  dependencies: []
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - export GITHUB_TOKEN=${GH_TOKEN}
+    - export GITHUB_USER=${GH_USER}
+    - export GITHUB_REPO=${GH_REPO}
+    - cit_gh_tool_init
+    - echo "WARNING! The description will be replaced anyway. You have to fix them on GitHub.com/"
+    - ${CIT_GH_TOOL} delete --tag ${CI_COMMIT_TAG} || true
