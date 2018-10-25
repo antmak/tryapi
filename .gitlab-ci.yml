@@ -61,7 +61,12 @@ gh_release_draft:
 
     # Releasing a draft
     - ${CIT_GH_TOOL} delete --tag ${CI_COMMIT_TAG} || true
-    - ${CIT_GH_TOOL} release --tag ${CI_COMMIT_TAG} --draft
+    - ${CIT_GH_TOOL} release --tag ${CI_COMMIT_TAG} -d "Hello release" --draft
+
+    # Upload the archive
+    - ARCHIVE_FILE="data.txt"
+    - ARCHIVE_NAME=${ARCHIVE_FILE}
+    - ${CIT_GH_TOOL} upload --tag ${CI_COMMIT_TAG} -f ${ARCHIVE_FILE} -n ${ARCHIVE_NAME}
 
     # Releasing a draft
     #- ${GH_TOOL} delete -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} || true
