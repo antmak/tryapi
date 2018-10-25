@@ -21,7 +21,7 @@ before_script:
   only:
     - /^v[0-9].*$/
 
-build:
+.build:
   stage: build
   tags:
     - build
@@ -57,7 +57,11 @@ gh_release_draft:
 
     # Pushing the tag anyway
     - *add_gh_remote_key
-    - git push --force github ${CI_COMMIT_TAG}
+    - git push --force gh ${CI_COMMIT_TAG}
+
+    # Releasing a draft
+    - ${CIT_GH_TOOL} delete --tag ${CI_COMMIT_TAG} || true
+    - ${CIT_GH_TOOL} release -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} --description "${RELEASE_DESC}" --draft
 
     # Releasing a draft
     #- ${GH_TOOL} delete -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} || true
