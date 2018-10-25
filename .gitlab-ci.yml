@@ -1,5 +1,6 @@
 stages:
   - build
+  - deploy
   - release_draft
   - release_submit
 
@@ -8,20 +9,35 @@ image: ${CI_DOCKER_REGISTRY}/esp32-ci-env
 before_script:
   # Use CI Tools
   #TODO Using _dev now, change it without _dev (see Variables)
-  - curl -sSL ${CIT_LOADER_URL} | sh
+  - curl -sSL ${CIT_DEV_LOADER_URL} | sh
   - source citools/import_functions
+
+.add_gh_remote_key: &add_gh_remote_key |
+  cit_add_ssh_key "${GH_SSH_KEY}"
+  git remote remove gh || true
+  git remote add gh ${GH_PUSH_REPO}
 
 build:
   stage: build
   tags:
     - build
   variables:
-    CI_DEBUG_TRACE: "true"
+    #CI_DEBUG_TRACE: "true"
   script:
     - set -x
     - echo $CI_COMMIT_REF_NAME
     - echo $CI_COMMIT_SHA
     #- echo $CI_COMMIT_TAG
+
+push_master_to_github:
+  stage: deploy
+  only:
+    - master
+  when: on_success
+  dependencies: []
+  script:
+    - *add_gh_remote_key
+    - git push gh HEAD:master
 
 gh_release_draft:
   stage: release_draft
@@ -30,7 +46,7 @@ gh_release_draft:
   tags:
     - build
   script:
-    #- *add_gh_key_remote
+    - *add_gh_remote_key
     # Print any existing information (it can be helpful to look at the description)
     - echo "An old information about ${CI_COMMIT_TAG}:"
     - ${GH_TOOL} info -s ${GITHUB_TOKEN} --tag ${CI_COMMIT_TAG} -j || echo "No information."
